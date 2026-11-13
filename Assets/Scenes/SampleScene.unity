@@ -484,6 +484,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::NpcChatUI
   dialogue: {fileID: 1902058261}
   npcDisplayName: Ian
+  targetCamera: {fileID: 0}
+  neutroColor: {r: 0.3, g: 0.65, b: 0.35, a: 1}
+  alertaColor: {r: 0.85, g: 0.2, b: 0.2, a: 1}
+  missaoColor: {r: 0.95, g: 0.7, b: 0.15, a: 1}
+  offlineColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
 --- !u!1 &480448324
 GameObject:
   m_ObjectHideFlags: 0
@@ -518,6 +523,8 @@ MonoBehaviour:
   model: recursive/flint-v1.0:free
   maxTokens: 1000
   temperature: 0.7
+  timeoutSeconds: 20
+  forceJsonFormat: 1
 --- !u!4 &480448326
 Transform:
   m_ObjectHideFlags: 0
@@ -593,6 +600,7 @@ GameObject:
   - component: {fileID: 1061226385}
   - component: {fileID: 1061226384}
   - component: {fileID: 1061226383}
+  - component: {fileID: 1061226386}
   m_Layer: 0
   m_Name: Terrain
   m_TagString: Untagged
@@ -675,6 +683,38 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1061226386
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1061226382}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshSurface
+  m_SerializedVersion: 0
+  m_AgentTypeID: 0
+  m_CollectObjects: 0
+  m_Size: {x: 10, y: 10, z: 10}
+  m_Center: {x: 0, y: 2, z: 0}
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_UseGeometry: 0
+  m_DefaultArea: 0
+  m_GenerateLinks: 0
+  m_IgnoreNavMeshAgent: 1
+  m_IgnoreNavMeshObstacle: 1
+  m_OverrideTileSize: 0
+  m_TileSize: 256
+  m_OverrideVoxelSize: 0
+  m_VoxelSize: 0.16666667
+  m_MinRegionArea: 2
+  m_NavMeshData: {fileID: 23800000, guid: 8a55da495501da942858ff0825162bdd, type: 2}
+  m_BuildHeightMesh: 0
 --- !u!1 &1631395303
 GameObject:
   m_ObjectHideFlags: 0
@@ -717,12 +757,11 @@ GameObject:
   - component: {fileID: 1737622556}
   - component: {fileID: 1737622555}
   - component: {fileID: 1737622554}
-  - component: {fileID: 1737622553}
   - component: {fileID: 1737622552}
   - component: {fileID: 1737622551}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -768,29 +807,6 @@ CharacterController:
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!136 &1737622553
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1737622550}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &1737622554
 MeshRenderer:
@@ -930,7 +946,7 @@ GameObject:
   - component: {fileID: 1902058259}
   - component: {fileID: 1902058258}
   - component: {fileID: 1902058257}
-  - component: {fileID: 1902058256}
+  - component: {fileID: 1902058262}
   - component: {fileID: 1902058255}
   - component: {fileID: 1902058261}
   m_Layer: 0
@@ -953,44 +969,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NpcCapsuleController
   player: {fileID: 1737622556}
-  patrolPoints:
-  - {fileID: 219416984}
-  - {fileID: 1631395304}
+  guideTarget: {fileID: 0}
   dialogue: {fileID: 1902058261}
-  moveSpeed: 3
+  followDistance: 2.2
+  followSpeed: 3.5
+  guideSpeed: 2.8
+  waitForPlayerDistance: 6
+  arrivalTolerance: 1.2
+  alertDuration: 12
   rotationSpeed: 8
-  gravity: -9.81
-  waypointTolerance: 0.2
-  waitTimeAtPoint: 1.5
-  chaseRadius: 6
-  stopChaseRadius: 9
   talkRadius: 1.8
   conversationCooldown: 15
---- !u!143 &1902058256
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1902058254}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.5
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!136 &1902058257
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -1099,12 +1088,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NpcDialogue
   client: {fileID: 480448325}
+  controller: {fileID: 1902058255}
   npcName: Ian, guarda do porto
   persona: "Voce e Ian, guarda do porto de Vharos, um RPG de fantasia.\nPersonalidade:
     desconfiado, seco, leal a guilda dos mercadores.\nSabe: rotas de navios, horarios
     das mar\xE9s, rumores de piratas.\nNao sabe: segredos do rei, nomes de tecnicas
     ou mecanicas do jogo."
   maxWords: 40
+  maxHistoryMessages: 10
+  messagesToSummarize: 4
+  maxSummaryChars: 600
   offlineLines:
   - Nao tenho tempo para conversa agora.
   - Volte quando o porto estiver mais calmo.
@@ -1124,6 +1117,9 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  onIntentChanged:
+    m_PersistentCalls:
+      m_Calls: []
   onConversationStarted:
     m_PersistentCalls:
       m_Calls:
@@ -1139,6 +1135,28 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+--- !u!195 &1902058262
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1902058254}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 1
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -1,213 +1,170 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 /// <summary>
-/// Controla uma cápsula como personagem NPC, com patrulha entre pontos
-/// e capacidade de perseguir o jogador quando ele entra no raio de detecção.
-/// Requer um componente CharacterController no mesmo GameObject.
+/// Movimento DETERMINISTICO do NPC via NavMeshAgent (funciona offline).
+/// O LLM so escolhe a intencao; este script decide como agir:
+///  - Neutro : segue o jogador.
+///  - Alerta : para, fica em guarda olhando para o jogador.
+///  - Missao : guia o jogador ate guideTarget (inverte quem segue quem).
+/// Nunca usa transform.position para mover: tudo passa pelo NavMesh (sem atravessar paredes).
 /// </summary>
-[RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(NavMeshAgent))]
 public sealed class NpcCapsuleController : MonoBehaviour
 {
-    private enum State
-    {
-        Patrolling,
-        Chasing,
-        Talking,
-        Idle
-    }
-
-    [Header("Referências")]
+    [Header("Referencias")]
     [SerializeField] private Transform player;
-    [SerializeField] private Transform[] patrolPoints;
+    [SerializeField] private Transform guideTarget;
     [SerializeField] private NpcDialogue dialogue;
 
-    [Header("Movimento")]
-    [SerializeField] private float moveSpeed = 3f;
+    [Header("Seguir")]
+    [SerializeField] private float followDistance = 2.2f;
+    [SerializeField] private float followSpeed = 3.5f;
+
+    [Header("Guiar (missao)")]
+    [SerializeField] private float guideSpeed = 2.8f;
+    [Tooltip("Se o jogador ficar mais longe que isso, o NPC espera por ele.")]
+    [SerializeField] private float waitForPlayerDistance = 6f;
+    [SerializeField] private float arrivalTolerance = 1.2f;
+
+    [Header("Guarda (alerta)")]
+    [SerializeField] private float alertDuration = 12f;
     [SerializeField] private float rotationSpeed = 8f;
-    [SerializeField] private float gravity = -9.81f;
-
-    [Header("Patrulha")]
-    [SerializeField] private float waypointTolerance = 0.2f;
-    [SerializeField] private float waitTimeAtPoint = 1.5f;
-
-    [Header("Detecção do jogador")]
-    [SerializeField] private float chaseRadius = 6f;
-    [SerializeField] private float stopChaseRadius = 9f;
 
     [Header("Conversa")]
-    [SerializeField] private float talkRadius = 1.8f;
+    [SerializeField] private float talkRadius = 2.5f;
     [SerializeField] private float conversationCooldown = 15f;
 
-    private CharacterController controller;
-    private Vector3 velocity;
-    private int currentPatrolIndex;
-    private float waitTimer;
-    private float conversationCooldownTimer;
-    private bool hasGreetedThisEncounter;
-    private State currentState = State.Patrolling;
+    private NavMeshAgent agent;
+    private NpcIntent currentIntent = NpcIntent.Neutro;
+    private float alertTimer;
+    private float cooldownTimer;
+    private bool greetedThisEncounter;
+
+    public NpcIntent CurrentIntent => currentIntent;
 
     private void Awake()
     {
-        controller = GetComponent<CharacterController>();
+        agent = GetComponent<NavMeshAgent>();
 
         if (player == null)
         {
-            var playerObj = GameObject.FindGameObjectWithTag("Player");
-            if (playerObj != null)
-                player = playerObj.transform;
+            var p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null) player = p.transform;
         }
-
-        if (dialogue == null)
-            dialogue = GetComponent<NpcDialogue>();
+        if (dialogue == null) dialogue = GetComponent<NpcDialogue>();
     }
+
+    /// <summary>Chamado pelo NpcDialogue somente com uma resposta JA VALIDADA.</summary>
+    public void SetIntent(NpcIntent intent)
+    {
+        currentIntent = intent;
+        if (intent == NpcIntent.Alerta) alertTimer = alertDuration;
+        if (intent == NpcIntent.Missao && guideTarget == null)
+        {
+            Debug.Log("[NPC] Missao sem guideTarget configurado; mantendo neutro.", this);
+            currentIntent = NpcIntent.Neutro;
+        }
+    }
+
+    /// <summary>Estado padrao (usado quando o LLM falha).</summary>
+    public void ReturnToDefault() => currentIntent = NpcIntent.Neutro;
 
     private void Update()
     {
-        ApplyGravity();
+        if (cooldownTimer > 0f) cooldownTimer -= Time.deltaTime;
+        if (player == null || !agent.isOnNavMesh) return;
 
-        if (conversationCooldownTimer > 0f)
-            conversationCooldownTimer -= Time.deltaTime;
+        HandleGreeting();
 
-        UpdateState();
-
-        switch (currentState)
+        switch (currentIntent)
         {
-            case State.Patrolling:
-                Patrol();
-                break;
-            case State.Chasing:
-                Chase();
-                break;
-            case State.Talking:
-            case State.Idle:
-                break;
+            case NpcIntent.Neutro: Follow(); break;
+            case NpcIntent.Alerta: Guard(); break;
+            case NpcIntent.Missao: Guide(); break;
         }
     }
 
-    private void ApplyGravity()
+    private void HandleGreeting()
     {
-        if (controller.isGrounded && velocity.y < 0f)
-            velocity.y = -2f;
-
-        velocity.y += gravity * Time.deltaTime;
-        controller.Move(new Vector3(0f, velocity.y, 0f) * Time.deltaTime);
-    }
-
-    private void UpdateState()
-    {
-        if (player == null)
+        float d = Vector3.Distance(transform.position, player.position);
+        if (d <= talkRadius)
         {
-            currentState = patrolPoints.Length > 0 ? State.Patrolling : State.Idle;
-            return;
-        }
-
-        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
-
-        if (distanceToPlayer <= talkRadius)
-        {
-            if (currentState != State.Talking)
+            if (!greetedThisEncounter && cooldownTimer <= 0f && dialogue != null)
             {
-                FaceTarget(player.position);
-
-                if (!hasGreetedThisEncounter && conversationCooldownTimer <= 0f && dialogue != null)
-                {
-                    dialogue.StartConversation();
-                    hasGreetedThisEncounter = true;
-                    conversationCooldownTimer = conversationCooldown;
-                }
+                dialogue.StartConversation();
+                greetedThisEncounter = true;
+                cooldownTimer = conversationCooldown;
             }
-
-            currentState = State.Talking;
-            return;
         }
-
-        if (distanceToPlayer > talkRadius + 0.5f)
-            hasGreetedThisEncounter = false;
-
-        if (currentState == State.Chasing && distanceToPlayer > stopChaseRadius)
+        else if (d > talkRadius + 1f)
         {
-            currentState = patrolPoints.Length > 0 ? State.Patrolling : State.Idle;
+            greetedThisEncounter = false;
         }
-        else if (currentState != State.Chasing && distanceToPlayer <= chaseRadius)
+    }
+
+    private void Follow()
+    {
+        agent.speed = followSpeed;
+        agent.stoppingDistance = followDistance;
+        agent.isStopped = false;
+        agent.SetDestination(player.position);
+        if (agent.remainingDistance <= followDistance) FaceTarget(player.position);
+    }
+
+    private void Guard()
+    {
+        agent.isStopped = true;
+        agent.ResetPath();
+        FaceTarget(player.position);
+
+        alertTimer -= Time.deltaTime;
+        if (alertTimer <= 0f) currentIntent = NpcIntent.Neutro;
+    }
+
+    private void Guide()
+    {
+        agent.speed = guideSpeed;
+        agent.stoppingDistance = arrivalTolerance;
+
+        float playerDist = Vector3.Distance(transform.position, player.position);
+        if (playerDist > waitForPlayerDistance)
         {
-            currentState = State.Chasing;
-        }
-    }
-
-    private void Patrol()
-    {
-        if (patrolPoints == null || patrolPoints.Length == 0)
+            agent.isStopped = true;           // espera o jogador alcancar
+            FaceTarget(player.position);
             return;
+        }
 
-        Transform target = patrolPoints[currentPatrolIndex];
-        Vector3 toTarget = target.position - transform.position;
-        toTarget.y = 0f;
+        agent.isStopped = false;
+        agent.SetDestination(guideTarget.position);
 
-        if (toTarget.magnitude <= waypointTolerance)
+        if (!agent.pathPending && agent.remainingDistance <= arrivalTolerance)
         {
-            waitTimer += Time.deltaTime;
-            if (waitTimer >= waitTimeAtPoint)
-            {
-                waitTimer = 0f;
-                currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
-            }
-            return;
+            Debug.Log("[NPC] Chegamos ao destino da missao.", this);
+            currentIntent = NpcIntent.Neutro;
         }
-
-        MoveTowards(target.position);
     }
 
-    private void Chase()
+    private void FaceTarget(Vector3 target)
     {
-        if (player == null)
-            return;
-
-        MoveTowards(player.position);
-    }
-
-    private void MoveTowards(Vector3 destination)
-    {
-        Vector3 direction = destination - transform.position;
-        direction.y = 0f;
-
-        if (direction.sqrMagnitude < 0.0001f)
-            return;
-
-        direction.Normalize();
-        RotateTowards(direction);
-
-        controller.Move(direction * (moveSpeed * Time.deltaTime));
-    }
-
-    private void FaceTarget(Vector3 destination)
-    {
-        Vector3 direction = destination - transform.position;
-        direction.y = 0f;
-
-        if (direction.sqrMagnitude < 0.0001f)
-            return;
-
-        direction.Normalize();
-        RotateTowards(direction);
-    }
-
-    private void RotateTowards(Vector3 direction)
-    {
-        float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
-        float currentAngle = transform.eulerAngles.y;
-        float smoothedAngle = Mathf.LerpAngle(currentAngle, targetAngle, rotationSpeed * Time.deltaTime);
-        transform.rotation = Quaternion.Euler(0f, smoothedAngle, 0f);
+        Vector3 dir = target - transform.position;
+        dir.y = 0f;
+        if (dir.sqrMagnitude < 0.0001f) return;
+        Quaternion look = Quaternion.LookRotation(dir.normalized);
+        transform.rotation = Quaternion.Slerp(transform.rotation, look, rotationSpeed * Time.deltaTime);
     }
 
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, chaseRadius);
-
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, stopChaseRadius);
-
         Gizmos.color = Color.cyan;
         Gizmos.DrawWireSphere(transform.position, talkRadius);
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, followDistance);
+        if (guideTarget != null)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(transform.position, guideTarget.position);
+            Gizmos.DrawWireSphere(guideTarget.position, arrivalTolerance);
+        }
     }
 }
