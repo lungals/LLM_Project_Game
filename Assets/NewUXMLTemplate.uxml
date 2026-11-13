@@ -1,0 +1,13 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/uiuss.uss?fileID=7433441132597879392&amp;guid=d39ee7eb09c26f3488cf3330531c553e&amp;type=3#uiuss"/>
+    <ui:VisualElement name="chat-root" class="chat-root">
+        <ui:Label name="npc-name-label" text="NPC" class="chat-npc-name" style="height: 71px;"/>
+        <ui:ScrollView name="chat-scroll" class="chat-scroll">
+            <ui:VisualElement name="chat-log" class="chat-log"/>
+        </ui:ScrollView>
+        <ui:VisualElement name="chat-input-row" class="chat-input-row">
+            <ui:TextField name="chat-input" multiline="false" class="chat-input" style="height: 51px;"/>
+            <ui:Button name="chat-send-button" text="Enviar" class="chat-send-button"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

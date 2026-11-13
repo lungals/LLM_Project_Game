@@ -1,0 +1,57 @@
+:root {
+.chat-root {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 420px;
+    max-height: 320px;
+    background-color: rgba(20, 20, 20, 0.85);
+    border-radius: 8px;
+    padding: 10px;
+    display: none;
+}
+
+.chat-npc-name {
+    color: white;
+    font-size: 16px;
+    -unity-font-style: bold;
+    margin-bottom: 4px;
+}
+
+.chat-scroll {
+    flex-grow: 1;
+    max-height: 200px;
+    margin-bottom: 6px;
+}
+
+.chat-log {
+    flex-direction: column;
+}
+
+.chat-line {
+    color: white;
+    font-size: 13px;
+    white-space: normal;
+    margin-bottom: 4px;
+}
+
+.chat-line-player {
+    color: #7fd0ff;
+}
+
+.chat-line-npc {
+    color: #ffe08a;
+}
+
+.chat-input-row {
+    flex-direction: row;
+}
+
+.chat-input {
+    flex-grow: 1;
+    margin-right: 6px;
+}
+
+.chat-send-button {
+    width: 70px;
+}
