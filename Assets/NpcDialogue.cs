@@ -127,8 +127,10 @@ public sealed class NpcDialogue : MonoBehaviour
             if (history.Count > 0 && history[history.Count - 1].role == "user")
                 history.RemoveAt(history.Count - 1);
 
-            if (controller != null) controller.ReturnToDefault();
-            onIntentChanged?.Invoke(NpcIntent.Neutro, "offline");
+            // Requisito: resposta invalida/falha NAO altera o estado. O movimento
+            // deterministico continua com a ULTIMA INTENCAO VALIDA (padrao: neutro/seguir).
+            // So a UI sinaliza que esta offline, mantendo a intencao atual visivel.
+            onIntentChanged?.Invoke(LastValidIntent, "offline");
             onReply?.Invoke(offlineLines.Length > 0
                 ? offlineLines[Random.Range(0, offlineLines.Length)]
                 : "...");

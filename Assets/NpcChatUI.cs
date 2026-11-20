@@ -125,18 +125,17 @@ public sealed class NpcChatUI : MonoBehaviour
     private void OnIntentChanged(NpcIntent intent, string humor)
     {
         Color c; string icon, text;
-        if (humor == "offline")
-        {
-            c = offlineColor; icon = "\u25CB"; text = "Offline - seguindo (padrao)";
-        }
-        else switch (intent)
+        bool offline = humor == "offline";
+        switch (intent)
         {
             case NpcIntent.Alerta: c = alertaColor; icon = "\u26A0"; text = "ALERTA - em guarda"; break;
             case NpcIntent.Missao: c = missaoColor; icon = "\u2691"; text = "MISSAO - guiando voce"; break;
             default:               c = neutroColor; icon = "\u25CF"; text = "Neutro - seguindo"; break;
         }
+        // Offline: mantem a intencao atual (ultima valida) e apenas avisa, com cor cinza misturada.
+        if (offline) c = Color.Lerp(c, offlineColor, 0.6f);
 
-        intentLabel.text = icon + "  " + text + (humor != "offline" ? "  (humor: " + humor + ")" : "");
+        intentLabel.text = icon + "  " + text + (offline ? "  (offline - ultima intencao valida)" : "  (humor: " + humor + ")");
         intentLabel.style.backgroundColor = c;
 
         if (chatRoot != null)
@@ -152,7 +151,7 @@ public sealed class NpcChatUI : MonoBehaviour
         }
 
         if (targetCamera != null)
-            targetCamera.backgroundColor = intent == NpcIntent.Alerta && humor != "offline"
+            targetCamera.backgroundColor = intent == NpcIntent.Alerta
                 ? Color.Lerp(originalCameraColor, alertaColor, 0.5f)
                 : originalCameraColor;
     }
